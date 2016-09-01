@@ -494,6 +494,7 @@ int parse_options(int argc, char **argv, bool *usage_error,
 		BOOL_OPT("remote", &opts.remote),
 		{ "config",			required_argument,	0, 1089},
 		{ "no-default-config",		no_argument,		0, 1090},
+		{ "cross-arch",			no_argument,		0, 1092},
 		{ },
 	};
 
@@ -783,6 +784,11 @@ int parse_options(int argc, char **argv, bool *usage_error,
 		case 1091:
 			opts.ps_socket = atoi(optarg);
 			break;
+		case 1092:
+			pr_msg("Turn cross arch C/R ON\n");
+			opts.cross_arch = true;
+			break;
+
 		case 'V':
 			pr_msg("Version: %s\n", CRIU_VERSION);
 			if (strcmp(CRIU_GITID, "0"))

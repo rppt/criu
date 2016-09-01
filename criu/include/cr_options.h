@@ -139,6 +139,9 @@ struct cr_options {
 	pid_t			tree_id;
 	int			log_level;
 	char			*imgs_dir;
+
+	/* Experimental support for cross-ISA C/R */
+	bool			cross_arch;
 };
 
 extern struct cr_options opts;
