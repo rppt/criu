@@ -84,6 +84,7 @@
 #include "dump.h"
 #include "img-remote.h"
 #include "eventpoll.h"
+#include "breakpoints.h"
 
 /*
  * Architectures can overwrite this function to restore register sets that
@@ -1799,6 +1800,9 @@ int cr_dump_tasks(pid_t pid)
 		     opts.cgroup_props ?
 		     strlen(opts.cgroup_props) : 0,
 		     opts.cgroup_props_file))
+		goto err;
+
+	if (opts.breakpoints_file && breakpoints_init(opts.breakpoints_file))
 		goto err;
 
 	if (parse_cg_info())
