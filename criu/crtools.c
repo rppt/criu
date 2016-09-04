@@ -48,6 +48,7 @@
 #include "lsm.h"
 #include "proc_parse.h"
 #include "kerndat.h"
+#include "breakpoints.h"
 
 #include "setproctitle.h"
 #include "sysctl.h"
@@ -472,6 +473,9 @@ usage:
 "			OPTIONS can be used to specify parameters for userns:\n"
 "			    user:PID,UID,GID\n"
 "\n"
+" --breakpoints <breakpoints file>\n"
+"			Read list of points from <breakpoints file> and allow\n"
+"			stopping the dumppe only at one of these points\n"
 "Check options:\n"
 "  Without options, \"criu check\" checks availability of absolutely required\n"
 "  kernel features, critical for performing dump and restore.\n"

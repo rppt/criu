@@ -495,6 +495,8 @@ int parse_options(int argc, char **argv, bool *usage_error,
 		{ "config",			required_argument,	0, 1089},
 		{ "no-default-config",		no_argument,		0, 1090},
 		{ "cross-arch",			no_argument,		0, 1092},
+		{ "breakpoints",		required_argument,	0, 1093},
+
 		{ },
 	};
 
@@ -787,6 +789,9 @@ int parse_options(int argc, char **argv, bool *usage_error,
 		case 1092:
 			pr_msg("Turn cross arch C/R ON\n");
 			opts.cross_arch = true;
+			break;
+		case 1093:
+			opts.breakpoints_file = optarg;
 			break;
 
 		case 'V':
