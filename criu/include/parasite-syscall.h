@@ -54,4 +54,6 @@ extern int parasite_dump_cgroup(struct parasite_ctl *ctl, struct parasite_dump_c
 
 extern struct parasite_tty_args *parasite_dump_tty(struct parasite_ctl *ctl, int fd, int type);
 
+#define BUILTIN_SYSCALL_SIZE	8
+
 #endif /* __CR_PARASITE_SYSCALL_H__ */

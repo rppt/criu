@@ -24,11 +24,44 @@ static int nr_breakpoints;
 
 int breakpoints_inject(pid_t pid)
 {
+	void *bp_code = breakpoint_code();
+	int i;
+
+	if (!bp_code)
+		return -1;
+
+	for (i = 0; i < nr_breakpoints; i++) {
+		struct breakpoint *bp = &breakpoints[i];
+
+		if (ptrace_peek_area(pid, bp->code_orig, bp->addr,
+				     BUILTIN_SYSCALL_SIZE)) {
+			pr_perror("Failed backing up code at %p\n", bp->addr);
+			return -1;
+		}
+
+		if (ptrace_poke_area(pid, bp_code, bp->addr,
+				     BUILTIN_SYSCALL_SIZE)) {
+			pr_perror("Failed injecting breakpoint\n");
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
 int breakpoints_remove(pid_t pid)
 {
+	int i;
+
+	for (i = 0; i < nr_breakpoints; i++) {
+		struct breakpoint *bp = &breakpoints[i];
+		if (ptrace_poke_area(pid, bp->code_orig, bp->addr,
+				     BUILTIN_SYSCALL_SIZE)) {
+			pr_perror("Failed restoring the code at %p\n", bp->addr);
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
@@ -77,6 +110,11 @@ int breakpoints_init(const char *breakpoints_file)
 	void *mem = MAP_FAILED;
 	int fd = -1, ret = -1;
 	struct stat st;
+
+	if (!breakpoint_code()) {
+		pr_err("Breakpoint injection is not supported for this arch\n");
+		return -1;
+	}
 
 	fd = open(breakpoints_file, O_RDONLY);
 	if (fd < 0) {

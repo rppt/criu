@@ -23,6 +23,7 @@
 #include "xmalloc.h"
 #include "util.h"
 #include <compel/compel.h>
+#include "breakpoints.h"
 
 #define NR_ATTEMPTS 5
 
@@ -446,6 +447,30 @@ static inline bool child_collected(struct pstree_item *i, pid_t pid)
 	return false;
 }
 
+static int seize_wait_breakpoint(pid_t pid)
+{
+	if (!opts.breakpoints_file)
+		return 0;
+
+	if (breakpoints_inject(pid))
+		return 1;
+
+	if (ptrace(PTRACE_CONT, pid, NULL, NULL)) {
+		pr_perror("Can't continue break handling, aborting");
+		return 1;
+	}
+
+	wait(NULL);
+
+	if (breakpoints_remove(pid))
+		return 1;
+
+	if (breakpoints_reset_ip(pid))
+		return 1;
+
+	return 0;
+}
+
 static int collect_task(struct pstree_item *item);
 static int collect_children(struct pstree_item *item)
 {
@@ -499,6 +524,11 @@ static int collect_children(struct pstree_item *item)
 			continue;
 		}
 
+		if (ret == COMPEL_TASK_ALIVE && seize_wait_breakpoint(pid)) {
+			pr_err("SEIZE %d: failed waiting for breakpoint\n", pid);
+			goto free;
+		}
+
 		if (ret == TASK_ZOMBIE)
 			ret = TASK_DEAD;
 		else
@@ -544,6 +574,7 @@ static void unseize_task_and_threads(const struct pstree_item *item, int st)
 		if (ptrace(PTRACE_DETACH, item->threads[i].real, NULL, NULL))
 			pr_perror("Unable to detach from %d", item->threads[i].real);
 }
+
 
 static void pstree_wait(struct pstree_item *root_item)
 {
@@ -681,6 +712,11 @@ static int collect_threads(struct pstree_item *item)
 			continue;
 		}
 
+		if (ret == COMPEL_TASK_ALIVE && seize_wait_breakpoint(pid)) {
+			pr_err("SEIZE %d: failed waiting for breakpoint\n", pid);
+			goto err;
+		}
+
 		if (ret == TASK_ZOMBIE)
 			ret = TASK_DEAD;
 		else
@@ -808,6 +844,11 @@ int collect_pstree(void)
 	if (ret < 0)
 		goto err;
 
+	if (ret == COMPEL_TASK_ALIVE && seize_wait_breakpoint(pid)) {
+		pr_err("SEIZE %d: failed waiting for breakpoint\n", pid);
+		goto err;
+	}
+
 	if (ret == TASK_ZOMBIE)
 		ret = TASK_DEAD;
 	else
@@ -838,4 +879,3 @@ err:
 	alarm(0);
 	return ret;
 }
-

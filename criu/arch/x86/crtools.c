@@ -631,3 +631,13 @@ int get_task_futex_robust_list_compat(pid_t pid, ThreadCoreEntry *info)
 	free_compat_syscall_stack(mmap32);
 	return ret;
 }
+
+void *breakpoint_code(void)
+{
+	return NULL;
+}
+
+int breakpoints_reset_ip(pid_t pid)
+{
+	return 0;
+}

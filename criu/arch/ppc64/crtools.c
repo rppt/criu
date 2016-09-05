@@ -506,3 +506,13 @@ int restore_gpregs(struct rt_sigframe *f, UserPpc64RegsEntry *r)
 
 	return 0;
 }
+
+void *breakpoint_code(void)
+{
+	return NULL;
+}
+
+int breakpoints_reset_ip(pid_t pid)
+{
+	return 0;
+}
