@@ -1,3 +1,5 @@
+#include <sys/ptrace.h>
+
 #include "compel/asm/fpu.h"
 #include "compel/compel.h"
 #include "compel/plugins/std/syscall-codes.h"
@@ -7,6 +9,12 @@
 #include "log.h"
 #include "protobuf.h"
 #include "types.h"
+
+/* Injected breakpoint */
+const char code_breakpoint[] = {
+	0xcc, 0xcc, 0xcc, 0xcc,	/* int 3, ... */
+	0xcc, 0xcc, 0xcc, 0xcc,	/* int 3, ... */
+};
 
 #include "asm/compat.h"
 
@@ -634,10 +642,19 @@ int get_task_futex_robust_list_compat(pid_t pid, ThreadCoreEntry *info)
 
 void *breakpoint_code(void)
 {
-	return NULL;
+	return (void *)code_breakpoint;
 }
+
+/* FIXME: add error handling and 32-bit support */
+#include <sys/reg.h>
 
 int breakpoints_reset_ip(pid_t pid)
 {
+	long rip;
+
+	rip = ptrace(PTRACE_PEEKUSER, pid, sizeof(long)*RIP);
+	ptrace(PTRACE_POKEUSER, pid, sizeof(long)*RIP, rip - 1);
+	rip = ptrace(PTRACE_PEEKUSER, pid, sizeof(long)*RIP);
+
 	return 0;
 }
