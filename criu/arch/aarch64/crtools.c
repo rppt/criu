@@ -1,5 +1,6 @@
 #include <string.h>
 #include <unistd.h>
+#include <sys/ptrace.h>
 
 #include <linux/elf.h>
 
@@ -25,6 +26,14 @@ unsigned __page_size = 0;
 unsigned __page_shift = 0;
 
 #define assign_reg(dst, src, e)		dst->e = (__typeof__(dst->e))(src)->e
+
+/*
+ * Injected breakpoint instruction
+ */
+const char code_breakpoint[] = {
+	0x00, 0x00, 0x20, 0xd4,		/* BRK #0 */
+	0x00, 0x00, 0x20, 0xd4		/* BRK #0 */
+};
 
 int save_task_regs(void *x, user_regs_struct_t *regs, user_fpregs_struct_t *fpsimd)
 {
@@ -143,10 +152,30 @@ int restore_gpregs(struct rt_sigframe *f, UserRegsEntry *r)
 
 void *breakpoint_code(void)
 {
-	return NULL;
+	return (void *)code_breakpoint;
 }
 
 int breakpoints_reset_ip(pid_t pid)
 {
+#if 0
+	user_regs_struct_t regs;
+	struct iovec iov;
+
+	iov.iov_base = &regs;
+	iov.iov_len = sizeof(regs);
+
+	if (ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov)) {
+		pr_perror("Failed to obtain CPU registers for %d", pid);
+		return -1;
+	}
+
+	regs.pc -= 4;
+
+	if (ptrace(PTRACE_SETREGSET, pid, NT_PRSTATUS, &iov)) {
+		pr_perror("Failed to set CPU registers for %d", pid);
+		return -1;
+	}
+#endif
+
 	return 0;
 }
