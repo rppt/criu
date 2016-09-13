@@ -88,6 +88,7 @@ obj-y			+= fdstore.o
 obj-y			+= uffd.o
 obj-y			+= config.o
 obj-y			+= breakpoints.o
+obj-y			+= cross-arch.o
 
 ifeq ($(VDSO),y)
 obj-y			+= pie-util-vdso.o

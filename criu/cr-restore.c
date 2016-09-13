@@ -85,6 +85,7 @@
 #include "files-reg.h"
 #include <compel/plugins/std/syscall-codes.h>
 #include "compel/include/asm/syscall.h"
+#include "cross-arch.h"
 
 #include "protobuf.h"
 #include "images/sa.pb-c.h"
@@ -748,7 +749,10 @@ static int open_core(int pid, CoreEntry **pcore)
 	ret = pb_read_one(img, pcore, PB_CORE);
 	close_image(img);
 
-	return ret <= 0 ? -1 : 0;
+	if (ret <= 0)
+		return -1;
+
+	return cross_arch_prepare_core(*pcore);
 }
 
 static int open_cores(int pid, CoreEntry *leader_core)
