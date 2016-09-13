@@ -30,6 +30,7 @@
 #include "fault-injection.h"
 #include "prctl.h"
 #include <compel/compel.h>
+#include "cross-arch.h"
 
 #include "protobuf.h"
 #include "images/pagemap.pb-c.h"
@@ -628,6 +629,9 @@ int prepare_mm_pid(struct pstree_item *i)
 		if (ret)
 			break;
 	}
+
+	if (!ret)
+		cross_arch_adjust_mm_entry(ri->mm);
 
 	return ret;
 }
