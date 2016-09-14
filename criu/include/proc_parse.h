@@ -96,7 +96,9 @@ extern int get_fd_mntid(int fd, int *mnt_id);
 struct pid;
 extern int parse_threads(int pid, struct pid **_t, int *_n);
 
+typedef uint64_t auxv_t;
 int parse_children(pid_t pid, pid_t **_c, int *_n);
+int read_task_auxv(pid_t pid, auxv_t *auxv, int len);
 
 extern bool is_vma_range_fmt(char *line);
 extern void parse_vmflags(char *buf, u32 *flags, u64 *madv, int *io_pf);

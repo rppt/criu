@@ -439,29 +439,17 @@ static int check_sysvipc_map_dump(pid_t pid, VmaEntry *vma)
 static int get_task_auxv(pid_t pid, MmEntry *mm)
 {
 	auxv_t mm_saved_auxv[AT_VECTOR_SIZE];
-	int fd, i, ret;
+	int i, ret;
 
-	pr_info("Obtaining task auvx ...\n");
-
-	fd = open_proc(pid, "auxv");
-	if (fd < 0)
+	ret = read_task_auxv(pid, mm_saved_auxv, sizeof(mm_saved_auxv));
+	if (ret < 0)
 		return -1;
 
-	ret = read(fd, mm_saved_auxv, sizeof(mm_saved_auxv));
-	if (ret < 0) {
-		ret = -1;
-		pr_perror("Error reading %d's auxv", pid);
-		goto err;
-	} else {
-		mm->n_mm_saved_auxv = ret / sizeof(auxv_t);
-		for (i = 0; i < mm->n_mm_saved_auxv; i++)
-			mm->mm_saved_auxv[i] = (u64)mm_saved_auxv[i];
-	}
+	mm->n_mm_saved_auxv = ret / sizeof(auxv_t);
+	for (i = 0; i < mm->n_mm_saved_auxv; i++)
+		mm->mm_saved_auxv[i] = (u64)mm_saved_auxv[i];
 
-	ret = 0;
-err:
-	close_safe(&fd);
-	return ret;
+	return 0;
 }
 
 static int dump_task_mm(pid_t pid, const struct proc_pid_stat *stat,

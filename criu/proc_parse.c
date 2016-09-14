@@ -2668,3 +2668,24 @@ int parse_uptime(uint64_t *upt)
 	fclose(f);
 	return 0;
 }
+
+int read_task_auxv(pid_t pid, auxv_t *auxv, int len)
+{
+	int fd, ret;
+
+	pr_info("Obtaining task auvx ...\n");
+
+	fd = open_proc(pid, "auxv");
+	if (fd < 0)
+		return -1;
+
+	ret = read(fd, auxv, len);
+	close_safe(&fd);
+
+	if (ret < 0) {
+		pr_perror("Error reading %d's auxv", pid);
+		return -1;
+	}
+
+	return ret;
+}
