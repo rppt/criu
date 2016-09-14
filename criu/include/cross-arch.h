@@ -1,6 +1,7 @@
 #ifndef __CR_CROSS_ARCH_H__
 #define __CR_CROSS_ARCH_H__
 
+extern int cross_arch_init(void);
 extern int cross_arch_prepare_core(CoreEntry *core);
 extern void cross_arch_thread_info_free(CoreEntry *core);
 

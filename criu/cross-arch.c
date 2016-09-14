@@ -1,9 +1,13 @@
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "asm/types.h"
 
 #include "cr_options.h"
 #include "log.h"
 #include "xmalloc.h"
 #include "cross-arch.h"
+#include "proc_parse.h"
 
 #include "images/core.pb-c.h"
 
@@ -35,6 +39,22 @@ int cross_arch_prepare_core(CoreEntry *core)
 		return -1;
 
 	core_force_native(core);
+
+	return 0;
+}
+
+static auxv_t mm_saved_auxv[AT_VECTOR_SIZE];
+static int mm_saved_auxv_len;
+
+int cross_arch_init(void)
+{
+	if (!opts.cross_arch)
+		return 0;
+
+	mm_saved_auxv_len = read_task_auxv(getpid(), mm_saved_auxv,
+					   sizeof(mm_saved_auxv));
+	if (mm_saved_auxv_len < 0)
+		return -1;
 
 	return 0;
 }

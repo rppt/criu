@@ -2370,6 +2370,9 @@ int cr_restore_tasks(void)
 
 	timing_start(TIME_RESTORE);
 
+	if (cross_arch_init())
+		goto err;
+
 	if (cpu_init() < 0)
 		goto err;
 
