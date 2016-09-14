@@ -1697,7 +1697,9 @@ ext:
 			return -1;
 		}
 
-		if (rfi->rfe->has_size && (st.st_size != rfi->rfe->size)) {
+		if (opts.cross_arch) {
+			pr_info("Skipping file size check for %s\n", rfi->path);
+		} else if (rfi->rfe->has_size && (st.st_size != rfi->rfe->size)) {
 			pr_err("File %s has bad size %"PRIu64" (expect %"PRIu64")\n",
 					rfi->path, st.st_size,
 					rfi->rfe->size);
