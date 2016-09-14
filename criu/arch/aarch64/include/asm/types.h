@@ -29,4 +29,6 @@ static inline uint64_t encode_pointer(void *p) { return (uint64_t)p; }
 typedef uint64_t auxv_t;
 typedef uint64_t tls_t;
 
+static inline void core_force_native(CoreEntry *c) {}
+
 #endif /* __CR_ASM_TYPES_H__ */

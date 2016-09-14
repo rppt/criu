@@ -735,6 +735,13 @@ static int collect_zombie_pids(struct task_restore_args *ta)
 	return collect_child_pids(TASK_DEAD, &ta->zombies_n);
 }
 
+static inline void free_core(CoreEntry *core)
+{
+	if (opts.cross_arch)
+		cross_arch_thread_info_free(core);
+	core_entry__free_unpacked(core, NULL);
+}
+
 static int open_core(int pid, CoreEntry **pcore)
 {
 	int ret;
@@ -1240,7 +1247,7 @@ static int restore_one_task(int pid, CoreEntry *core)
 	}
 
 	if (core)
-		core_entry__free_unpacked(core, NULL);
+		free_core(core);
 	return ret;
 }
 
@@ -1401,7 +1408,7 @@ err_unlock:
 		unlock_last_pid();
 err:
 	if (ca.core)
-		core_entry__free_unpacked(ca.core, NULL);
+		free_core(ca.core);
 	return ret;
 }
 
@@ -3477,7 +3484,7 @@ static int sigreturn_restore(pid_t pid, struct task_restore_args *task_args, uns
 			strncpy(thread_args[i].comm, core->tc->comm, TASK_COMM_LEN);
 
 		if (thread_args[i].pid != pid)
-			core_entry__free_unpacked(tcore, NULL);
+			free_core(tcore);
 
 		pr_info("Thread %4d stack %8p rt_sigframe %8p\n",
 				i, mz[i].stack, mz[i].rt_sigframe);
@@ -3501,7 +3508,7 @@ static int sigreturn_restore(pid_t pid, struct task_restore_args *task_args, uns
 	new_sp = restorer_stack(task_args->t->mz);
 
 	/* No longer need it */
-	core_entry__free_unpacked(core, NULL);
+	free_core(core);
 	xfree(current->core);
 
 	/*

@@ -24,6 +24,11 @@ static inline int core_is_compat(CoreEntry *c)
 	}
 }
 
+static inline void core_force_native(CoreEntry *c)
+{
+	c->thread_info->gpregs->mode = USER_X86_REGS_MODE__NATIVE;
+}
+
 #define CORE_ENTRY__MARCH CORE_ENTRY__MARCH__X86_64
 
 #define CORE_THREAD_ARCH_INFO(core) core->thread_info

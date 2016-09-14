@@ -39,4 +39,6 @@ typedef uint64_t auxv_t;
 /* Not used but the structure parasite_dump_thread needs a tls_t field */
 typedef uint64_t tls_t;
 
+static inline void core_force_native(CoreEntry *c) {}
+
 #endif /* __CR_ASM_TYPES_H__ */
