@@ -3509,6 +3509,9 @@ static int sigreturn_restore(pid_t pid, struct task_restore_args *task_args, uns
 	task_args->can_map_vdso = kdat.can_map_vdso;
 #endif
 
+	if (opts.cross_arch)
+		task_args->cross_arch = true;
+
 	new_sp = restorer_stack(task_args->t->mz);
 
 	/* No longer need it */
