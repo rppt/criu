@@ -90,7 +90,8 @@ extern int vdso_map_compat(unsigned long map_at);
 extern int vdso_proxify(struct vdso_symtable *sym_rt,
 			unsigned long vdso_rt_parked_at,
 			VmaEntry *vmas, size_t nr_vmas,
-			bool compat_vdso, bool force_trampolines);
+			bool compat_vdso, bool force_trampolines,
+			bool cross_arch);
 extern int vdso_redirect_calls(unsigned long base_to, unsigned long base_from,
 			struct vdso_symtable *to, struct vdso_symtable *from,
 			bool compat_vdso);

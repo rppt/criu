@@ -92,6 +92,56 @@ int __vdso_fill_symtable(uintptr_t mem, size_t size,
 }
 #endif
 
+static int vdso_remap_cross_arch(unsigned long vdso_rt_parked_at,
+				 struct vdso_symtable *sym_rt,
+				 VmaEntry *vma_vdso, VmaEntry *vma_vvar)
+{
+	unsigned long vdso_start = vma_vdso->start;
+	unsigned long vvar_start = 0;
+	int ret;
+
+	pr_info("Cross-arch, forcing vDSO remap inplace\n");
+	pr_debug("image [vdso] %lx-%lx [vvar] %lx-%lx\n",
+		 (unsigned long)vma_vdso->start, (unsigned long)vma_vdso->end,
+		 vma_vvar ? (unsigned long)vma_vvar->start : VVAR_BAD_ADDR,
+		 vma_vvar ? (unsigned long)vma_vvar->end : VVAR_BAD_ADDR);
+
+	if (sys_munmap((void *)(uintptr_t)vma_vdso->start,
+		       vma_entry_len(vma_vdso))) {
+		pr_err("Cross arch Failed to unmap vdso\n");
+		return -1;
+	}
+
+	if (vma_vvar) {
+		if (sys_munmap((void *)(uintptr_t)vma_vvar->start,
+			       vma_entry_len(vma_vvar))) {
+			pr_err("Cross arch Failed to unmap vvar\n");
+			return -1;
+		}
+		vvar_start = vma_vvar->start;
+	}
+
+	if (!vvar_start) {
+		ret = vdso_remap("ca-vvar", vdso_rt_parked_at, vdso_start,
+				 sym_rt->vvar_size);
+		vdso_rt_parked_at += sym_rt->vvar_size;
+		vdso_start += sym_rt->vvar_size;
+		ret |= vdso_remap("ca-vdso", vdso_rt_parked_at, vdso_start,
+				  sym_rt->vdso_size);
+	} else if (sym_rt->vvar_size == VVAR_BAD_ADDR)  {
+		ret = vdso_remap("ca-vdso", vdso_rt_parked_at, vvar_start,
+				 sym_rt->vdso_size);
+	} else {
+		ret = vdso_remap("ca-vvar", vdso_rt_parked_at, vvar_start,
+				 sym_rt->vvar_size);
+		vdso_rt_parked_at += sym_rt->vvar_size;
+		ret |= vdso_remap("ca-vdso", vdso_rt_parked_at, vdso_start,
+				  sym_rt->vdso_size);
+	}
+
+	return ret;
+}
+
 /*
  * Proxification strategy
  *
@@ -226,7 +276,7 @@ static int add_vdso_proxy(VmaEntry *vma_vdso, VmaEntry *vma_vvar,
 
 int vdso_proxify(struct vdso_symtable *sym_rt, unsigned long vdso_rt_parked_at,
 		 VmaEntry *vmas, size_t nr_vmas,
-		 bool compat_vdso, bool force_trampolines)
+		 bool compat_vdso, bool force_trampolines, bool cross_arch)
 {
 	VmaEntry *vma_vdso = NULL, *vma_vvar = NULL;
 	struct vdso_symtable s = VDSO_SYMTABLE_INIT;
@@ -253,6 +303,9 @@ int vdso_proxify(struct vdso_symtable *sym_rt, unsigned long vdso_rt_parked_at,
 		return -1;
 	}
 
+	if (cross_arch)
+		return vdso_remap_cross_arch(vdso_rt_parked_at, sym_rt,
+					     vma_vdso, vma_vvar);
 	/*
 	 * vDSO mark overwrites Elf program header of proxy vDSO thus
 	 * it must never ever be greater in size.
