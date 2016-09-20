@@ -1095,7 +1095,7 @@ static int check_core(CoreEntry *core, struct pstree_item *me)
 {
 	int ret = -1;
 
-	if (core->mtype != CORE_ENTRY__MARCH) {
+	if (!opts.cross_arch && core->mtype != CORE_ENTRY__MARCH) {
 		pr_err("Core march mismatch %d\n", (int)core->mtype);
 		goto out;
 	}
@@ -3401,7 +3401,8 @@ static int sigreturn_restore(pid_t pid, struct task_restore_args *task_args, uns
 	 * Arguments for task restoration.
 	 */
 
-	BUG_ON(core->mtype != CORE_ENTRY__MARCH);
+	if (!opts.cross_arch)
+		BUG_ON(core->mtype != CORE_ENTRY__MARCH);
 
 	task_args->logfd	= log_get_fd();
 	task_args->loglevel	= log_get_loglevel();

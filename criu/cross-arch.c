@@ -28,7 +28,6 @@ int cross_arch_prepare_core(CoreEntry *core)
 
 	pr_info("Starting cross-ISA restore from %s to %s\n", arch_name[core->mtype], arch_name[CORE_ENTRY__MARCH]);
 
-	core->mtype = CORE_ENTRY__MARCH;
 	if (arch_alloc_thread_info(core))
 		return -1;
 
