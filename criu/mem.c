@@ -1025,6 +1025,12 @@ static int restore_priv_vma_content(struct pstree_item *t, struct page_read *pr)
 			p = decode_pointer((off) * PAGE_SIZE +
 					vma->premmaped_addr);
 
+			/* FIXME: distinguish executable from mmap'ed files */
+			if (opts.cross_arch && vma_area_is(vma, VMA_FILE_PRIVATE)) {
+				pr->skip_pages(pr, PAGE_SIZE);
+				continue;
+			}
+
 			set_bit(off, vma->page_bitmap);
 			if (vma_inherited(vma)) {
 				clear_bit(off, vma->pvma->page_bitmap);
