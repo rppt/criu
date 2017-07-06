@@ -1480,7 +1480,8 @@ class launcher:
 		self.__subs = {}
 		self.__fail = False
 		self.__file_report = None
-		self.__failed = []
+                self.__junit_report = None
+                self.__failed = []
 		self.__nr_skip = 0
 		if self.__max > 1 and self.__total > 1:
 			self.__use_log = True
@@ -1493,6 +1494,7 @@ class launcher:
 			now = datetime.datetime.now()
 			att = 0
 			reportname = os.path.join(report_dir, "criu-testreport.tap")
+                        junitreport = os.path.join(report_dir, "criu-testreport.xml")
 			while os.access(reportname, os.F_OK):
 				reportname = os.path.join(report_dir, "criu-testreport" + ".%d.tap" % att)
 				att += 1
@@ -1503,6 +1505,11 @@ class launcher:
 			print >> self.__file_report, "# Timestamp: " + now.strftime("%Y-%m-%d %H:%M") + " (GMT+1)"
 			print >> self.__file_report, "# "
 			print >> self.__file_report, "1.." + str(nr_tests)
+
+                        self.__junit_report = open(junitreport, 'w')
+			print >> self.__junit_report, '<?xml version="1.0" encoding="UTF-8"?>'
+			print >> self.__junit_report, '<testsuite tests="' + str(nr_tests) + '">'
+
 		self.__taint = open("/proc/sys/kernel/tainted").read()
 		if int(self.__taint, 0) != 0:
 			print "The kernel is tainted: %r" % self.__taint
@@ -1521,6 +1528,13 @@ class launcher:
 		if self.__file_report:
 			testline = "ok %d - %s # SKIP %s" % (self.__runtest, name, reason)
 			print >> self.__file_report, testline
+
+                        testline = '\t<testcase name="%d" classname="%s">' % (self.__runtest, name.replace('/', '.'))
+			print >> self.__junit_report, testline
+                        testline = '\t\t<skipped/>'
+			print >> self.__junit_report, testline
+                        testline = '\t</testcase>'
+			print >> self.__junit_report, testline
 
 	def run_test(self, name, desc, flavor):
 
@@ -1587,12 +1601,23 @@ class launcher:
 					details = {'output': open(sub['log']).read()}
 					print >> self.__file_report, testline
 					print >> self.__file_report, yaml.dump(details, explicit_start=True, explicit_end=True, default_style='|')
+
+                                        testline = '\t<testcase name="%d" classname="%s">' % (self.__runtest, sub['name'].replace('/', '.'))
+			                print >> self.__junit_report, testline
+                                        testline = '\t\t<failure message="%s"/>' % details
+			                print >> self.__junit_report, testline
+                                        testline = '\t</testcase>'
+			                print >> self.__junit_report, testline
+
 				if sub['log']:
 					add_to_output(sub['log'])
 			else:
 				if self.__file_report:
 					testline = "ok %d - %s" % (self.__runtest, sub['name'])
 					print >> self.__file_report, testline
+
+                                        testline = '\t<testcase name="%d" classname="%s"></testcase>' % (self.__runtest, sub['name'].replace('/', '.'))
+			                print >> self.__junit_report, testline
 
 			if sub['log']:
 				print open(sub['log']).read()
@@ -1625,6 +1650,9 @@ class launcher:
 			self.__fail = True
 		if self.__file_report:
 			self.__file_report.close()
+		if self.__junit_report:
+                        print >> self.__junit_report, "</testsuite>"
+			self.__junit_report.close()
 
 		if opts['keep_going']:
 			if self.__fail:
