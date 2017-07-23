@@ -73,12 +73,12 @@ struct lazy_iov {
 	bool queued;
 };
 
-struct lp_req {
-	unsigned long addr;	/* actual #PF (or background) destination */
-	unsigned long img_addr;	/* the corresponding address at the dump time */
-	unsigned long len;
-	struct list_head l;
-};
+/*
+ * Any request is a memory range where it's start address is the
+ * actual #PF (or background fetch) destination and it's img_start is
+ * the corresponding address at the dump time
+ */
+#define lp_req lazy_range
 
 struct lazy_pages_info {
 	int pid;
@@ -764,8 +764,8 @@ static int uffd_io_complete(struct page_read *pr, unsigned long img_addr, int nr
 	lpi = container_of(pr, struct lazy_pages_info, pr);
 
 	list_for_each_entry(req, &lpi->reqs, l) {
-		if (req->img_addr == img_addr) {
-			addr = req->addr;
+		if (req->img_start == img_addr) {
+			addr = req->start;
 			list_del(&req->l);
 			xfree(req);
 			break;
@@ -863,7 +863,7 @@ static bool is_iov_queued(struct lazy_pages_info *lpi, struct lazy_iov *iov)
 	struct lp_req *req;
 
 	list_for_each_entry(req, &lpi->reqs, l)
-		if (req->addr >= iov->rng.start && req->addr < iov->rng.end)
+		if (req->start >= iov->rng.start && req->start < iov->rng.end)
 			return true;
 
 	return false;
@@ -886,15 +886,16 @@ static int handle_remaining_pages(struct lazy_pages_info *lpi)
 	if (!req)
 		return -1;
 
-	req->addr = iov->rng.start;
-	req->img_addr = iov->rng.img_start;
-	req->len = iov->rng.end - iov->rng.start;
+	req->start = iov->rng.start;
+	req->img_start = iov->rng.img_start;
+	req->end = iov->rng.end;
 	list_add(&req->l, &lpi->reqs);
 	iov->queued = true;
 
-	nr_pages = req->len / PAGE_SIZE;
+	nr_pages = (req->end - req->start) / PAGE_SIZE;
 
-	err = uffd_handle_pages(lpi, req->img_addr, nr_pages, PR_ASYNC | PR_ASAP);
+	err = uffd_handle_pages(lpi, req->img_start, nr_pages,
+				PR_ASYNC | PR_ASAP);
 	if (err < 0) {
 		lp_err(lpi, "Error during UFFD copy\n");
 		return -1;
@@ -1008,7 +1009,7 @@ static bool is_page_queued(struct lazy_pages_info *lpi, unsigned long addr)
 	struct lp_req *req;
 
 	list_for_each_entry(req, &lpi->reqs, l)
-		if (addr >= req->addr && addr < req->addr + req->len)
+		if (addr >= req->start && addr < req->end)
 			return true;
 
 	return false;
@@ -1035,12 +1036,12 @@ static int handle_page_fault(struct lazy_pages_info *lpi, struct uffd_msg *msg)
 	req = xzalloc(sizeof(*req));
 	if (!req)
 		return -1;
-	req->addr = address;
-	req->img_addr = iov->rng.img_start + (address - iov->rng.start);
-	req->len = PAGE_SIZE;
+	req->start = address;
+	req->img_start = iov->rng.img_start + (address - iov->rng.start);
+	req->end = req->start + PAGE_SIZE;
 	list_add(&req->l, &lpi->reqs);
 
-	ret = uffd_handle_pages(lpi, req->img_addr, 1, PR_ASYNC | PR_ASAP);
+	ret = uffd_handle_pages(lpi, req->img_start, 1, PR_ASYNC | PR_ASAP);
 	if (ret < 0) {
 		lp_err(lpi, "Error during regular page copy\n");
 		return -1;
