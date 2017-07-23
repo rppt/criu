@@ -676,6 +676,46 @@ static int drop_vmas(struct lazy_pages_info *lpi, unsigned long addr, int len)
 	return drop_ranges(&lpi->vmas, addr, len, &vma_range_info);
 }
 
+static int unreg_vma(struct lazy_pages_info *lpi, struct lazy_vma *vma)
+{
+	struct uffdio_range unreg;
+	int ret;
+
+	unreg.start = vma->rng.start;
+	unreg.len = vma->rng.end - vma->rng.start;
+
+	ret = ioctl(lpi->lpfd.fd, UFFDIO_UNREGISTER, &unreg);
+	if (ret && errno != ENOMEM) {
+		lp_perror(lpi, "Failed to unregister (%lx - %lx)",
+			  vma->rng.start, vma->rng.end);
+
+		/*
+		 * For kernels that don't have non-cooperative
+		 * userfaultfd events ioctl can fail because the
+		 * process VM layout has changed or the process has
+		 * exited and we have no way to detect it.
+		 */
+		if (kdat.uffd_features & NEED_UFFD_API_FEATURES)
+			return -1;
+	}
+
+	return 0;
+}
+
+static int unreg_vmas(struct lazy_pages_info *lpi)
+{
+	struct lazy_vma *vma, *n;
+
+	list_for_each_entry_safe(vma, n, &lpi->vmas, rng.l) {
+		if (unreg_vma(lpi, vma))
+			return -1;
+
+		list_del(&vma->rng.l);
+	}
+
+	return 0;
+}
+
 static int remap_iovs_in_vma(struct lazy_vma *vma, unsigned long off)
 {
 	struct lazy_iov *iov;
@@ -1264,6 +1304,9 @@ static int handle_page_fault(struct lazy_pages_info *lpi, struct uffd_msg *msg)
 	if (is_page_queued(lpi, address))
 		return 0;
 
+	if (list_empty(&lpi->vmas))
+		return 0;
+
 	iov = find_iov(lpi, address);
 	if (!iov)
 		return uffd_zero(lpi, address, 1);
@@ -1371,12 +1414,15 @@ static int handle_requests(int epollfd, struct epoll_event *events, int nr_fds)
 
 		poll_timeout = 0;
 		list_for_each_entry_safe(lpi, n, &lpis, l) {
-			if (!has_iovs(lpi) && list_empty(&lpi->reqs)) {
+			if (list_empty(&lpi->vmas)) {
 				lazy_pages_summary(lpi);
 				list_del(&lpi->l);
 				lpi_fini(lpi);
 				continue;
 			}
+
+			if (!has_iovs(lpi) && list_empty(&lpi->reqs))
+				unreg_vmas(lpi);
 
 			remaining = true;
 			if (has_iovs(lpi)) {
