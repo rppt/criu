@@ -76,11 +76,15 @@ struct lazy_iov {
 struct lazy_range_info {
 	int off;
 	int alloc_size;
+	int (*drop)(struct lazy_range *rng);
 };
+
+static int __drop_iov(struct lazy_range *rng);
 
 static const struct lazy_range_info iov_range_info = {
 	.off = offsetof(struct lazy_iov, rng),
 	.alloc_size = sizeof(struct lazy_iov),
+	.drop = __drop_iov,
 };
 
 /*
@@ -458,17 +462,24 @@ free_iovs:
 	return -1;
 }
 
-/*
- * Purge range (addr, addr + len) from lazy_iovs. The range may
- * cover several continuous IOVs.
- */
-static int drop_iovs(struct lazy_pages_info *lpi, unsigned long addr, int len)
+static int __drop_iov(struct lazy_range *rng)
 {
-	struct lazy_iov *iov, *n;
+	struct lazy_iov *iov;
 
-	list_for_each_entry_safe(iov, n, &lpi->iovs, rng.l) {
-		unsigned long start = iov->rng.start;
-		unsigned long end = iov->rng.end;
+	iov = container_of(rng, struct lazy_iov, rng);
+	iov->queued = false;
+
+	return 0;
+}
+
+static int drop_ranges(struct list_head *list, unsigned long addr, int len,
+		       const struct lazy_range_info *lri)
+{
+	struct lazy_range *rng, *n;
+
+	list_for_each_entry_safe(rng, n, list, l) {
+		unsigned long start = rng->start;
+		unsigned long end = rng->end;
 
 		if (len <= 0 || addr + len < start)
 			break;
@@ -481,38 +492,41 @@ static int drop_iovs(struct lazy_pages_info *lpi, unsigned long addr, int len)
 			addr = start;
 		}
 
-		iov->queued = false;
+		if (lri->drop)
+			if (lri->drop(rng))
+				return -1;
 
 		/*
-		 * The range completely fits into the current IOV.
-		 * If addr equals iov_start we just "drop" the
-		 * beginning of the IOV. Otherwise, we make the IOV to
-		 * end at addr, and add a new IOV start starts at
+		 * The range completely fits into the current RNG.
+		 * If addr equals rng->start we just "drop" the
+		 * beginning of the RNG. Otherwise, we make the RNG to
+		 * end at addr, and add a new RNG that starts at
 		 * addr + len.
 		 */
 		if (addr + len < end) {
 			if (addr == start) {
-				iov->rng.start += len;
-				iov->rng.img_start += len;
+				rng->start += len;
+				rng->img_start += len;
 			} else {
-				if (split_iov(iov, addr + len))
+				if (split_range(rng, addr + len, lri))
 					return -1;
-				iov->rng.end = addr;
+				rng->end = addr;
 			}
 			break;
 		}
 
 		/*
-		 * The range spawns beyond the end of the current IOV.
-		 * If addr equals iov_start we just "drop" the entire
-		 * IOV.  Otherwise, we cut the beginning of the IOV
+		 * The range spawns beyond the end of the current RNG.
+		 * If addr equals rng->start we just "drop" the entire
+		 * RNG.  Otherwise, we cut the beginning of the RNG
 		 * and continue to the next one with the updated range
 		 */
 		if (addr == start) {
-			list_del(&iov->rng.l);
-			xfree(iov);
+			void *p = rng - lri->off;
+			list_del(&rng->l);
+			xfree(p);
 		} else {
-			iov->rng.end = addr;
+			rng->end = addr;
 		}
 
 		len -= (end - addr);
@@ -520,6 +534,15 @@ static int drop_iovs(struct lazy_pages_info *lpi, unsigned long addr, int len)
 	}
 
 	return 0;
+}
+
+/*
+ * Purge range (addr, addr + len) from lazy_iovs. The range may
+ * cover several continuous IOVs.
+ */
+static int drop_iovs(struct lazy_pages_info *lpi, unsigned long addr, int len)
+{
+	return drop_ranges(&lpi->iovs, addr, len, &iov_range_info);
 }
 
 static int remap_iovs(struct lazy_pages_info *lpi, unsigned long from,
