@@ -73,6 +73,16 @@ struct lazy_iov {
 	bool queued;
 };
 
+struct lazy_range_info {
+	int off;
+	int alloc_size;
+};
+
+static const struct lazy_range_info iov_range_info = {
+	.off = offsetof(struct lazy_iov, rng),
+	.alloc_size = sizeof(struct lazy_iov),
+};
+
 /*
  * Any request is a memory range where it's start address is the
  * actual #PF (or background fetch) destination and it's img_start is
@@ -393,21 +403,29 @@ static struct lazy_iov *find_iov(struct lazy_pages_info *lpi,
 	return NULL;
 }
 
-static int split_iov(struct lazy_iov *iov, unsigned long addr)
+static int split_range(struct lazy_range *rng, unsigned long addr,
+		       const struct lazy_range_info *lri)
 {
-	struct lazy_iov *new;
+	void *_new;
+	struct lazy_range *new;
 
-	new = xzalloc(sizeof(*new));
-	if (!new)
+	_new = xzalloc(lri->alloc_size);
+	if (!_new)
 		return -1;
+	new = _new + lri->off;
 
-	new->rng.start = addr;
-	new->rng.img_start = iov->rng.img_start + addr - iov->rng.start;
-	new->rng.end = iov->rng.end;
-	iov->rng.end = addr;
-	list_add(&new->rng.l, &iov->rng.l);
+	new->start = addr;
+	new->img_start = rng->img_start + addr - rng->start;
+	new->end = rng->end;
+	rng->end = addr;
+	list_add(&new->l, &rng->l);
 
 	return 0;
+}
+
+static int split_iov(struct lazy_iov *iov, unsigned long addr)
+{
+	return split_range(&iov->rng, addr, &iov_range_info);
 }
 
 static int copy_iovs(struct lazy_pages_info *src, struct lazy_pages_info *dst)
