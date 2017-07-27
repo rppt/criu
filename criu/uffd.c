@@ -181,14 +181,6 @@ static void free_vmas(struct lazy_pages_info *lpi)
 	}
 }
 
-static void free_lpi_iovs(struct lazy_pages_info *lpi)
-{
-	struct lazy_vma *p;
-
-	list_for_each_entry(p, &lpi->vmas, rng.l)
-		free_iovs(p);
-}
-
 static void lpi_fini(struct lazy_pages_info *lpi)
 {
 	if (!lpi)
@@ -692,10 +684,6 @@ static int unreg_vma(struct lazy_pages_info *lpi, struct lazy_vma *vma)
 	unreg.start = vma->rng.start;
 	unreg.len = vma->rng.end - vma->rng.start;
 
-	/* the process exited */
-	if (!lpi->lpfd.fd)
-		return 0;
-
 	ret = ioctl(lpi->lpfd.fd, UFFDIO_UNREGISTER, &unreg);
 	if (ret && errno != ENOMEM) {
 		lp_perror(lpi, "Failed to unregister (%lx - %lx)",
@@ -986,7 +974,7 @@ static int handle_exit(struct lazy_pages_info *lpi)
 	lp_debug(lpi, "EXIT\n");
 	if (epoll_del_rfd(epollfd, &lpi->lpfd))
 		return -1;
-	free_lpi_iovs(lpi);
+	free_vmas(lpi);
 	close(lpi->lpfd.fd);
 	lpi->lpfd.fd = 0;
 
@@ -1425,24 +1413,25 @@ static int handle_requests(int epollfd, struct epoll_event *events, int nr_fds)
 			pr_debug("Start handling remaining pages\n");
 
 		poll_timeout = 0;
+
 		list_for_each_entry_safe(lpi, n, &lpis, l) {
-			if (list_empty(&lpi->vmas)) {
+			if (list_empty(&lpi->vmas) && list_empty(&lpi->reqs)) {
 				lazy_pages_summary(lpi);
 				list_del(&lpi->l);
 				lpi_fini(lpi);
 				continue;
 			}
 
-			if (!has_iovs(lpi) && list_empty(&lpi->reqs))
-				unreg_vmas(lpi);
-
 			remaining = true;
-			if (has_iovs(lpi)) {
-				ret = handle_remaining_pages(lpi);
-				if (ret < 0)
+
+			if (!has_iovs(lpi) && list_empty(&lpi->reqs))
+				if (unreg_vmas(lpi))
 					goto out;
-				break;
-			}
+
+			ret = handle_remaining_pages(lpi);
+			if (ret < 0)
+				goto out;
+			break;
 		}
 
 		if (!remaining)
