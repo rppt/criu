@@ -1389,8 +1389,6 @@ static int handle_requests(int epollfd, struct epoll_event *events, int nr_fds)
 	int ret;
 
 	for (;;) {
-		bool remaining = false;
-
 		ret = epoll_run_rfds(epollfd, events, nr_fds, poll_timeout);
 		if (ret < 0)
 			goto out;
@@ -1409,6 +1407,9 @@ static int handle_requests(int epollfd, struct epoll_event *events, int nr_fds)
 
 		poll_timeout = 0;
 
+		if (list_empty(&lpis))
+			break;
+
 		list_for_each_entry_safe(lpi, n, &lpis, l) {
 			if (list_empty(&lpi->vmas) && list_empty(&lpi->reqs)) {
 				lazy_pages_summary(lpi);
@@ -1416,8 +1417,6 @@ static int handle_requests(int epollfd, struct epoll_event *events, int nr_fds)
 				lpi_fini(lpi);
 				continue;
 			}
-
-			remaining = true;
 
 			if (!has_iovs(lpi) && list_empty(&lpi->reqs))
 				if (unreg_vmas(lpi))
@@ -1428,9 +1427,6 @@ static int handle_requests(int epollfd, struct epoll_event *events, int nr_fds)
 				goto out;
 			break;
 		}
-
-		if (!remaining)
-			break;
 	}
 
 out:
