@@ -1304,8 +1304,10 @@ static int handle_page_fault(struct lazy_pages_info *lpi, struct uffd_msg *msg)
 	if (is_page_queued(lpi, address))
 		return 0;
 
-	if (list_empty(&lpi->vmas))
+	if (list_empty(&lpi->vmas)) {
+		lp_warn(lpi, "spurious page fault\n");
 		return 0;
+	}
 
 	iov = find_iov(lpi, address);
 	if (!iov)
