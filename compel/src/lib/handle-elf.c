@@ -351,6 +351,14 @@ int __handle_elf(void *mem, size_t size)
 			if (sym->st_shndx == SHN_ABS) {
 				value32 = (int32_t)sym->st_value;
 				value64 = (int64_t)sym->st_value;
+			} else if (sym->st_shndx == SHN_COMMON) {
+				/*
+				 * We compiled with -fcommon.
+				 * This is not supposed to happen.
+				 */
+				pr_err("Common symbol: `%s'\n", name);
+				pr_err("Please, compile with -fno-common\n");
+				goto err;
 			} else {
 				Elf_Shdr *sh_src;
 
