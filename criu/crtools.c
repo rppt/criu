@@ -522,7 +522,6 @@ int main(int argc, char *argv[], char *envp[])
 
 #undef BOOL_OPT
 
-	BUILD_BUG_ON(PAGE_SIZE != PAGE_IMAGE_SIZE);
 	BUILD_BUG_ON(CTL_32 != SYSCTL_TYPE__CTL_32);
 	BUILD_BUG_ON(__CTL_STR != SYSCTL_TYPE__CTL_STR);
 
