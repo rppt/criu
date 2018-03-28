@@ -3,6 +3,7 @@
 #include "common/scm.h"
 #include "common/compiler.h"
 #include "common/lock.h"
+#include "common/page.h"
 
 #define pr_err(fmt, ...)	print_on_level(1, fmt, ##__VA_ARGS__)
 #define pr_info(fmt, ...)	print_on_level(3, fmt, ##__VA_ARGS__)
@@ -18,6 +19,10 @@
 static int tsock = -1;
 
 static struct rt_sigframe *sigframe;
+
+#ifdef ARCH_HAS_LONG_PAGES
+unsigned PAGE_SIZE;
+#endif
 
 int parasite_get_rpc_sock(void)
 {
@@ -142,6 +147,9 @@ static noinline __used int parasite_init_daemon(void *data)
 
 	args->sigreturn_addr = (uint64_t)(uintptr_t)fini_sigreturn;
 	sigframe = (void*)(uintptr_t)args->sigframe;
+#ifdef ARCH_HAS_LONG_PAGES
+	PAGE_SIZE = args->page_size;
+#endif
 
 	ret = tsock = sys_socket(PF_UNIX, SOCK_SEQPACKET, 0);
 	if (tsock < 0) {

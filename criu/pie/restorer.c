@@ -36,6 +36,7 @@
 #include "uffd.h"
 
 #include "common/lock.h"
+#include "common/page.h"
 #include "restorer.h"
 #include "aio.h"
 #include "seccomp.h"
@@ -1230,6 +1231,9 @@ long __export_restore_task(struct task_restore_args *args)
 	zombies = args->zombies;
 	n_zombies = args->zombies_n;
 	*args->breakpoint = rst_sigreturn;
+#ifdef ARCH_HAS_LONG_PAGES
+	PAGE_SIZE = args->page_size;
+#endif
 
 	ksigfillset(&act.rt_sa_mask);
 	act.rt_sa_handler = sigchld_handler;
