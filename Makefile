@@ -88,6 +88,7 @@ export PROTOUFIX DEFINES
 # Independent options for all tools.
 DEFINES			+= -D_FILE_OFFSET_BITS=64
 DEFINES			+= -D_GNU_SOURCE
+DEFINES			+= -fno-common
 
 WARNINGS		:= -Wall -Wformat-security
 
