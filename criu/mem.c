@@ -907,6 +907,7 @@ static int restore_priv_vma_content(struct pstree_item *t, struct page_read *pr)
 	int ret = 0;
 	struct list_head *vmas = &rsti(t)->vmas.h;
 	struct list_head *vma_io = &rsti(t)->vma_io;
+	unsigned char *buf = alloca(PAGE_SIZE);
 
 	unsigned int nr_restored = 0;
 	unsigned int nr_shared = 0;
@@ -948,7 +949,6 @@ static int restore_priv_vma_content(struct pstree_item *t, struct page_read *pr)
 		}
 
 		for (i = 0; i < nr_pages; i++) {
-			unsigned char buf[PAGE_SIZE];
 			void *p;
 
 			/*
