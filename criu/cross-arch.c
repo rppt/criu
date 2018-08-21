@@ -15,6 +15,7 @@
 #include "cross-arch.h"
 #include "proc_parse.h"
 
+#include "stack_transform.h"
 
 static const char *arch_name[] = {
 	[CORE_ENTRY__MARCH__UNKNOWN]	= "UNKNOWN",

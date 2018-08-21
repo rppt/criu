@@ -1,5 +1,5 @@
 # here is a workaround for a bug in libnl-3:
-# 6a8d90f5fec4 "attr: Allow attribute type 0" 
+# 6a8d90f5fec4 "attr: Allow attribute type 0"
 WRAPFLAGS		+= -Wl,--wrap=nla_parse,--wrap=nlmsg_parse
 
 ARCH_DIR		:= criu/arch/$(SRCARCH)
@@ -29,6 +29,7 @@ ccflags-y		+= -iquote .
 ccflags-y		+= -I/usr/include/libnl3
 ccflags-y		+= $(COMPEL_UAPI_INCLUDES)
 ccflags-y		+= $(CONFIG-DEFINES)
+ccflags-y		+= -Istacktrans/include
 
 export ccflags-y
 
