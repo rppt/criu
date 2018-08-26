@@ -3454,6 +3454,9 @@ static int sigreturn_restore(pid_t pid, struct task_restore_args *task_args, uns
 			goto err;
 		}
 
+		if (cross_arch_stack_xform(tcore, rsti(current)->mm, vmas))
+			goto err;
+
 		thread_args[i].ta		= task_args;
 		thread_args[i].gpregs		= *CORE_THREAD_ARCH_INFO(tcore)->gpregs;
 		thread_args[i].clear_tid_addr	= CORE_THREAD_ARCH_INFO(tcore)->clear_tid_addr;
