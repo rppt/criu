@@ -494,8 +494,10 @@ int parse_options(int argc, char **argv, bool *usage_error,
 		BOOL_OPT("remote", &opts.remote),
 		{ "config",			required_argument,	0, 1089},
 		{ "no-default-config",		no_argument,		0, 1090},
-		{ "cross-arch",			no_argument,		0, 1092},
-		{ "breakpoints",		required_argument,	0, 1093},
+		{ "cross-arch",			no_argument,		0, 1192},
+		{ "breakpoints",		required_argument,	0, 1193},
+		{ "cross-arch-src",		required_argument,	0, 1194},
+		{ "cross-arch-dst",		required_argument,	0, 1195},
 
 		{ },
 	};
@@ -786,12 +788,18 @@ int parse_options(int argc, char **argv, bool *usage_error,
 		case 1091:
 			opts.ps_socket = atoi(optarg);
 			break;
-		case 1092:
+		case 1192:
 			pr_msg("Turn cross arch C/R ON\n");
 			opts.cross_arch = true;
 			break;
-		case 1093:
+		case 1193:
 			opts.breakpoints_file = optarg;
+			break;
+		case 1194:
+			SET_CHAR_OPTS(cross_arch_src, optarg);
+			break;
+		case 1195:
+			SET_CHAR_OPTS(cross_arch_dst, optarg);
 			break;
 
 		case 'V':

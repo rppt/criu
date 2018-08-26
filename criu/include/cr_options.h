@@ -142,6 +142,8 @@ struct cr_options {
 
 	/* Experimental support for cross-ISA C/R */
 	bool			cross_arch;
+	char			*cross_arch_src;
+	char			*cross_arch_dst;
 	char			*breakpoints_file;
 };
 
